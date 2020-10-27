@@ -1,56 +1,4 @@
-/*
- * FreeRTOS Kernel V10.2.0
- * Copyright (C) 2019 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * http://www.FreeRTOS.org
- * http://aws.amazon.com/freertos
- *
- * 1 tab == 4 spaces!
- */
 
-/* 
-	NOTE : Tasks run in system mode and the scheduler runs in Supervisor mode.
-	The processor MUST be in supervisor mode when vTaskStartScheduler is 
-	called.  The demo applications included in the FreeRTOS.org download switch
-	to supervisor mode prior to main being called.  If you are not using one of
-	these demo application projects then ensure Supervisor mode is used.
-*/
-
-
-/*
- * Creates all the demo application tasks, then starts the scheduler.  The WEB
- * documentation provides more details of the demo application tasks.
- * 
- * Main.c also creates a task called "Check".  This only executes every three 
- * seconds but has the highest priority so is guaranteed to get processor time.  
- * Its main function is to check that all the other tasks are still operational.
- * Each task (other than the "flash" tasks) maintains a unique count that is 
- * incremented each time the task successfully completes its function.  Should 
- * any error occur within such a task the count is permanently halted.  The 
- * check task inspects the count of each task to ensure it has changed since
- * the last time the check task executed.  If all the count variables have 
- * changed all the tasks are still executing error free, and the check task
- * toggles the onboard LED.  Should any task contain an error at any time 
- * the LED toggle rate will change from 3 seconds to 500ms.
- *
- */
 
 /* Standard includes. */
 #include <stdlib.h>
@@ -136,27 +84,29 @@ signed char TaskMessage[35];
 static void prvSetupHardware( void );
 /*-----------------------------------------------------------*/
 /*-------------------------------------------------Task 1 Start-------------------------------------------------
+// this task take an action on led based on button state
+
 void Led_Task(void * pvParameters){
 while(1){
 if(xSemaphore!=NULL){	
-if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE ){		 
-	LedState=!LedState; 
+if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE ){		//check if i can take the semaphore 
+	LedState=!LedState; 																						// toggle led 
 }
 }
-	if(ButtonState == Button_Released)	 GPIO_write(PORT_0,PIN1,LedState);
+	if(ButtonState == Button_Released)	 GPIO_write(PORT_0,PIN1,LedState); // if you released the button it will show the new state of the led
 
 	 vTaskDelay(50);
   }
 }
 
-
+//this task read the button state
 void Button_Task(void * pvParameters){
 while(1){
 	
-  if (ButtonState == Button_Released && GPIO_read(PORT_0,PIN0)== PIN_IS_HIGH)	 ButtonState = Button_Pressed;
-	if (ButtonState == Button_Pressed &&  GPIO_read(PORT_0,PIN0)== PIN_IS_LOW ){
+  if (ButtonState == Button_Released && GPIO_read(PORT_0,PIN0)== PIN_IS_HIGH)	 ButtonState = Button_Pressed; // check if the button is pressed
+	if (ButtonState == Button_Pressed &&  GPIO_read(PORT_0,PIN0)== PIN_IS_LOW ){ // check if the button is released
 		ButtonState = Button_Released;
-		xSemaphoreGive(xSemaphore);
+		xSemaphoreGive(xSemaphore);// give the semaphore 
 }
 	vTaskDelay(100);
  }
@@ -165,37 +115,38 @@ while(1){
 
 
 /*-------------------------------------------------Task 2 Start-------------------------------------------------
+//this task wirte on the uart 
 void Task1(void * pvParameters){
 	char x ;
 	uint32_t Counter = 0 ;
 
 while(1){
-if(xMutex!=NULL){	
-if( xSemaphoreTake( xMutex, ( TickType_t ) 10 ) == pdTRUE ){	
-for(x=0 ; x<10; x++){	
+if(xMutex!=NULL){	//check if the mutex has been created successfully
+if( xSemaphoreTake( xMutex, ( TickType_t ) 10 ) == pdTRUE ){	// try to take the mutex 
+for(x=0 ; x<10; x++){	// send on uart 10 times 
 vSerialPutString(Task1String,18);
-for(Counter=0;Counter<500000;Counter++){} 	
+for(Counter=0;Counter<500000;Counter++){} // Heavy load so we can see it on uart	
 
 }
-xSemaphoreGive( xMutex );
+xSemaphoreGive( xMutex ); // give back the mutex so  any task can take it 
  }
 }
 vTaskDelay(100);
  }
 }
 
-
+//this task wirte on the uart 
 void Task2(void * pvParameters){
 uint32_t Counter = 0 ;
 char y ;
 while(1){
-if(xMutex!=NULL){	
-if( xSemaphoreTake( xMutex, ( TickType_t ) 10 ) == pdTRUE ){
-for( y=0;y<10;y++){	
+if(xMutex!=NULL){	//check if the mutex has been created successfully
+if( xSemaphoreTake( xMutex, ( TickType_t ) 10 ) == pdTRUE ){// try to take the mutex 
+for( y=0;y<10;y++){	// send on uart 10 times 
 vSerialPutString(Task2String,18);	
-for(Counter=0;Counter<1000000;Counter++){} 	
+for(Counter=0;Counter<1000000;Counter++){} // Heavy load so we can see it on uart 	
 }
-xSemaphoreGive( xMutex );
+xSemaphoreGive( xMutex ); // give back the mutex so  any task can take it 
  }
 }
 vTaskDelay(500);
@@ -211,19 +162,19 @@ void Task1(void * pvParameters){
 	 char Task1Message[25],CheckVariable;
 while(1){
 	
-	CheckVariable=FirstButtonState;	
+	CheckVariable=FirstButtonState;	// save current state of the button
 	
-  if (FirstButtonState == Button_1_Released && GPIO_read(PORT_0,PIN0)== PIN_IS_HIGH){	 			
+  if (FirstButtonState == Button_1_Released && GPIO_read(PORT_0,PIN0)== PIN_IS_HIGH){	 //Check if button is pressed			
 	FirstButtonState=Button_1_Pressed;
-	strcpy(Task1Message," Button 1 Is Pressed \n");
+	strcpy(Task1Message," Button 1 Is Pressed \n"); // check if the button is pressed copy "Button 1 Is Pressed " to Task1Message array to put it in queue
 	}
-	else if (FirstButtonState == Button_1_Pressed &&  GPIO_read(PORT_0,PIN0)== PIN_IS_LOW ){
+	else if (FirstButtonState == Button_1_Pressed &&  GPIO_read(PORT_0,PIN0)== PIN_IS_LOW ){//Check if button is Released	
 		FirstButtonState=Button_1_Released;
-		strcpy(Task1Message," Button 1 Is Released \n");
+		strcpy(Task1Message," Button 1 Is Released \n");// check if the button is Released copy "Button 1 Is Released " to Task1Message array to put it in queue
 	}
-			if (FirstButtonState != CheckVariable){
-		if(xQueueSend(xQueue,( void * )Task1Message, ( TickType_t ) portMAX_DELAY)==pdTRUE){}
-		else xSerialPutChar('E');
+			if (FirstButtonState != CheckVariable){// check if the button state has been changed
+		if(xQueueSend(xQueue,( void * )Task1Message, ( TickType_t ) portMAX_DELAY)==pdTRUE){}//check if it can send the string array in the queue
+		else xSerialPutChar('E');// if it cant it will put E on serial 
 		}
 				vTaskDelay(50);
 
@@ -233,30 +184,30 @@ while(1){
 void Task2(void * pvParameters){
 	 char Task2Message[25],CheckVariable;
 while(1){
-		  CheckVariable=SecondButtonState;	
-  if (SecondButtonState == Button_2_Released && GPIO_read(PORT_0,PIN1)== PIN_IS_HIGH){	 			
+		  CheckVariable=SecondButtonState;	// save current state of the button
+  if (SecondButtonState == Button_2_Released && GPIO_read(PORT_0,PIN1)== PIN_IS_HIGH){	 //Check if button is pressed	 			
 	SecondButtonState=Button_2_Pressed;
-	strcpy(Task2Message," Button 2 Is Pressed \n");
+	strcpy(Task2Message," Button 2 Is Pressed \n");// check if the button is pressed copy "Button 2 Is Pressed " to Task1Message array to put it in queue
 	}
-	else if (SecondButtonState == Button_2_Pressed &&  GPIO_read(PORT_0,PIN1)== PIN_IS_LOW ){
+	else if (SecondButtonState == Button_2_Pressed &&  GPIO_read(PORT_0,PIN1)== PIN_IS_LOW ){//Check if button is Released	
 		SecondButtonState=Button_2_Released;
-		strcpy(Task2Message," Button 2 Is Released \n");
+		strcpy(Task2Message," Button 2 Is Released \n");// check if the button is Released copy "Button 2 Is Released " to Task1Message array to put it in queue
 	}
-		if (SecondButtonState != CheckVariable){
-		if(xQueueSend(xQueue,( void * )Task2Message, ( TickType_t ) portMAX_DELAY)==pdTRUE){}
-		else xSerialPutChar('E');
+		if (SecondButtonState != CheckVariable){// check if the button state has been changed
+		if(xQueueSend(xQueue,( void * )Task2Message, ( TickType_t ) portMAX_DELAY)==pdTRUE){}//check if it can send the string array in the queue
+		else xSerialPutChar('E');// if it cant it will put E on serial 
 		}
 	vTaskDelay(50);
 			
  }
 }
-
+//this task send string every 100 ms
 void Task3(void * pvParameters){
 signed char Task3String[]=" String to Be Sent Every 100 Ms \n";
 while(1){
  		
-if(xQueueSend(xQueue,( void * )Task3String, ( TickType_t ) portMAX_DELAY)==pdTRUE){}
-else xSerialPutChar('E');
+if(xQueueSend(xQueue,( void * )Task3String, ( TickType_t ) portMAX_DELAY)==pdTRUE){}//check if it can send the string array in the queue
+else xSerialPutChar('E');// if it cant it will put E on serial 
 vTaskDelay(100);
  }
 }
@@ -264,8 +215,8 @@ vTaskDelay(100);
 void Task4(void * pvParameters){
 	signed char Buff[35];
 	while(1){
-if(xQueueReceive(xQueue,&Buff,( TickType_t ) portMAX_DELAY)==pdTRUE){
-vSerialPutString(Buff,35);
+if(xQueueReceive(xQueue,&Buff,( TickType_t ) portMAX_DELAY)==pdTRUE){// receive the queue message and save it in Buff. array 
+vSerialPutString(Buff,35);//send buff array on uart 
 		}
 	vTaskDelay(150);
 
@@ -284,7 +235,7 @@ int main( void )
 	prvSetupHardware();
 	 
 /*-------------------------------------------------Task 1 Main Start-------------------------------------------------
-	xSemaphore=xSemaphoreCreateBinary();
+	xSemaphore=xSemaphoreCreateBinary();//create semaphore
 	xTaskCreate(Led_Task,"Led Task",100,( void * ) 0,1,&LedTaskHandler );
 	xTaskCreate(Button_Task,"Button Task",100,( void * ) 0,1,&ButtonTaskHandler );
 
@@ -292,7 +243,7 @@ int main( void )
 
 
 /*-------------------------------------------------Task 2 Main Start-------------------------------------------------
-xMutex=xSemaphoreCreateMutex();
+xMutex=xSemaphoreCreateMutex(); // create mutex
 	
 	xTaskCreate(Task1,"Task 1",100,( void * ) 0,2,&Task1Handler );
 	xTaskCreate(Task2,"Task 2",100,( void * ) 0,1,&Task2Handler );
@@ -300,7 +251,7 @@ xMutex=xSemaphoreCreateMutex();
 
 /*-------------------------------------------------Task 2 Main Start-------------------------------------------------*/
 
-	xQueue = xQueueCreate( 3, sizeof( TaskMessage) );
+	xQueue = xQueueCreate( 3, sizeof( TaskMessage) ); // create queue with TaskMessage array size
   
 
 	xTaskCreate(Task1,"Task 1",100,( void * ) 0,1,&Task1Handler );
